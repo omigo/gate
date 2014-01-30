@@ -5,11 +5,11 @@ import (
 	"crypto/x509"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 )
 
 func Request(req *http.Request) *http.Response {
-
 	var host = req.Host
 
 	if i := strings.LastIndex(host, ":"); i == -1 {
@@ -45,11 +45,17 @@ func Request(req *http.Request) *http.Response {
 	var res *http.Response
 	switch proto {
 	case "http/1.1", "":
-		res, _ = http.Get(req.URL.String())
+		client := httputil.NewClientConn(conn, nil)
+		res, _ = client.Do(req)
 	case "spdy/2":
 		session := NewSession(conn, conn, 2)
+		log.Info("New Session %s => %s", conn.LocalAddr(), conn.RemoteAddr())
+
 		session.Serve()
-		res = session.Request(req)
+		id := session.Request(req)
+		log.Trace("Wait Response with StreamId %d", id)
+
+		res = session.Response(id)
 	default:
 		log.Fatal("Proto no support")
 	}
@@ -61,7 +67,6 @@ func DialTCP(host string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info("connection %s ==> %s", conn.LocalAddr(), conn.RemoteAddr())
 
 	return conn, nil
 }
@@ -78,11 +83,8 @@ func DialTLS(host string) (net.Conn, string, error) {
 		return nil, "", err
 	}
 
-	log.Info("connection %s ==> %s", conn.LocalAddr(), conn.RemoteAddr())
-
 	state := conn.ConnectionState()
 	if log.Level <= INFO {
-		state := conn.ConnectionState()
 		for _, v := range state.PeerCertificates {
 			publicKey, err := x509.MarshalPKIXPublicKey(v.PublicKey)
 			if err != nil {

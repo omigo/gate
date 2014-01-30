@@ -21,22 +21,20 @@ const (
 )
 
 type Frame interface {
-	Parse(buf *bytes.Buffer)
 	Len() uint32
-	Head() string
 }
 
 /*
 
 Control frames
 
-  +----------------------------------+
-  |C| Version(15bits) | Type(16bits) |
-  +----------------------------------+
-  | Flags (8)  |  Length (24 bits)   |
-  +----------------------------------+
-  |               Data               |
-  +----------------------------------+
++----------------------------------+
+|C| Version(15bits) | Type(16bits) |
++----------------------------------+
+| Flags (8)  |  Length (24 bits)   |
++----------------------------------+
+|               Data               |
++----------------------------------+
 
 */
 type CtrlFrameHead struct {
@@ -60,13 +58,13 @@ func (h *CtrlFrameHead) Head() string {
 
 Data frames
 
-  +----------------------------------+
-  |C|       Stream-ID (31bits)       |
-  +----------------------------------+
-  | Flags (8)  |  Length (24 bits)   |
-  +----------------------------------+
-  |               Data               |
-  +----------------------------------+
++----------------------------------+
+|C|       Stream-ID (31bits)       |
++----------------------------------+
+| Flags (8)  |  Length (24 bits)   |
++----------------------------------+
+|               Data               |
++----------------------------------+
 
 */
 type DataFrame struct {
@@ -89,38 +87,38 @@ func (h *DataFrame) Head() string {
 
 SYN_STREAM
 
-  +----------------------------------+
-  |1|       2          |       1     |
-  +----------------------------------+
-  | Flags (8)  |  Length (24 bits)   |
-  +----------------------------------+
-  |X|          Stream-ID (31bits)    |
-  +----------------------------------+
-  |X|Associated-To-Stream-ID (31bits)|
-  +----------------------------------+
-  |Pri(2)|Unused(14)|                |
-  +-----------------+                |
-  |     Name/value header block      |
-  |             ...                  |
-  +----------------------------------+
++----------------------------------+
+|1|       2          |       1     |
++----------------------------------+
+| Flags (8)  |  Length (24 bits)   |
++----------------------------------+
+|X|          Stream-ID (31bits)    |
++----------------------------------+
+|X|Associated-To-Stream-ID (31bits)|
++----------------------------------+
+|Pri(2)|Unused(14)|                |
++-----------------+                |
+|     Name/value header block      |
+|             ...                  |
++----------------------------------+
 
 
 Name/Value header block format
 
 
-  +------------------------------------+
-  | Number of Name/Value pairs (int16) |
-  +------------------------------------+
-  |     Length of name (int16)         |
-  +------------------------------------+
-  |           Name (string)            |
-  +------------------------------------+
-  |     Length of value  (int16)       |
-  +------------------------------------+
-  |          Value   (string)          |
-  +------------------------------------+
-  |           (repeats)                |
-  +------------------------------------+
++------------------------------------+
+| Number of Name/Value pairs (int16) |
++------------------------------------+
+|     Length of name (int16)         |
++------------------------------------+
+|           Name (string)            |
++------------------------------------+
+|     Length of value  (int16)       |
++------------------------------------+
+|          Value   (string)          |
++------------------------------------+
+|           (repeats)                |
++------------------------------------+
 
 */
 type SynStreamFrame struct {
@@ -144,22 +142,30 @@ func NewSynStreamFrame(streamId uint32) *SynStreamFrame {
 	return frame
 }
 
+func (syn *SynStreamFrame) String() string {
+	return fmt.Sprintf("SynStreamFrame{"+
+		"Ctrl: true, Version: %d, Type: %d, Flags: %d, Length: %d, "+
+		"StreamId: %d, AssociatedId: %d, Priority: %d, Header: %v }",
+		syn.Version, syn.Type, syn.Flags, syn.Length, syn.StreamId,
+		syn.AssociatedId, syn.Priority<<14, syn.Header)
+}
+
 /*
 
 SYN_REPLY
 
-  +----------------------------------+
-  |1|        2        |        2     |
-  +----------------------------------+
-  | Flags (8)  |  Length (24 bits)   |
-  +----------------------------------+
-  |X|          Stream-ID (31bits)    |
-  +----------------------------------+
-  | Unused        |                  |
-  +----------------                  |
-  |     Name/value header block      |
-  |              ...                 |
-  +----------------------------------+
++----------------------------------+
+|1|        2        |        2     |
++----------------------------------+
+| Flags (8)  |  Length (24 bits)   |
++----------------------------------+
+|X|          Stream-ID (31bits)    |
++----------------------------------+
+| Unused        |                  |
++----------------                  |
+|     Name/value header block      |
+|              ...                 |
++----------------------------------+
 
 */
 type SynReplyFrame struct {
@@ -174,15 +180,15 @@ type SynReplyFrame struct {
 
 RST_STREAM
 
-  +-------------------------------+
-  |1|       2        |      3     |
-  +-------------------------------+
-  | Flags (8)  |         8        |
-  +-------------------------------+
-  |X|          Stream-ID (31bits) |
-  +-------------------------------+
-  |          Status code          |
-  +-------------------------------+
++-------------------------------+
+|1|       2        |      3     |
++-------------------------------+
+| Flags (8)  |         8        |
++-------------------------------+
+|X|          Stream-ID (31bits) |
++-------------------------------+
+|          Status code          |
++-------------------------------+
 */
 type RstStreamFrame struct {
 	CtrlFrameHead
@@ -194,23 +200,23 @@ type RstStreamFrame struct {
 
 SETTINGS
 
-  +----------------------------------+
-  |1|       2          |       4     |
-  +----------------------------------+
-  | Flags (8)  |  Length (24 bits)   |
-  +----------------------------------+
-  |   Number of entries (32 bits)    |
-  +----------------------------------+
-  |          ID/Value Pairs          |
-  |             ...                  |
-  +----------------------------------+
++----------------------------------+
+|1|       2          |       4     |
++----------------------------------+
+| Flags (8)  |  Length (24 bits)   |
++----------------------------------+
+|   Number of entries (32 bits)    |
++----------------------------------+
+|          ID/Value Pairs          |
+|             ...                  |
++----------------------------------+
 
 Each ID/value pair is as follows:
- +----------------------------------+
- |    ID (24 bits)   | ID_Flags (8) |
- +----------------------------------+
- |          Value (32 bits)         |
- +----------------------------------+
++----------------------------------+
+|    ID (24 bits)   | ID_Flags (8) |
++----------------------------------+
+|          Value (32 bits)         |
++----------------------------------+
 
 */
 
@@ -229,11 +235,11 @@ type Setting struct {
 
 NOOP
 
-  +----------------------------------+
-  |1|       2          |       5     |
-  +----------------------------------+
-  | 0 (Flags)  |    0 (Length)       |
-  +----------------------------------+
++----------------------------------+
+|1|       2          |       5     |
++----------------------------------+
+| 0 (Flags)  |    0 (Length)       |
++----------------------------------+
 
 */
 type NoopFrame struct {
@@ -244,13 +250,13 @@ type NoopFrame struct {
 
 PING
 
-  +----------------------------------+
-  |1|       2          |       6     |
-  +----------------------------------+
-  | 0 (flags) |     4 (length)       |
-  +----------------------------------|
-  |            32-bit ID             |
-  +----------------------------------+
++----------------------------------+
+|1|       2          |       6     |
++----------------------------------+
+| 0 (flags) |     4 (length)       |
++----------------------------------|
+|            32-bit ID             |
++----------------------------------+
 
 */
 type PingFrame struct {
@@ -264,13 +270,13 @@ type PingFrame struct {
 GOAWAY
 
 
-  +----------------------------------+
-  |1|       2          |       7     |
-  +----------------------------------+
-  | 0 (flags) |     4 (length)       |
-  +----------------------------------|
-  |X|  Last-good-stream-ID (31 bits) |
-  +----------------------------------+
++----------------------------------+
+|1|       2          |       7     |
++----------------------------------+
+| 0 (flags) |     4 (length)       |
++----------------------------------|
+|X|  Last-good-stream-ID (31 bits) |
++----------------------------------+
 
 */
 type GoawayFrame struct {
@@ -283,17 +289,17 @@ type GoawayFrame struct {
 
 HEADERS
 
-  +----------------------------------+
-  |C|     2           |      8       |
-  +----------------------------------+
-  | Flags (8)  |  Length (24 bits)   |
-  +----------------------------------+
-  |X|          Stream-ID (31bits)    |
-  +----------------------------------+
-  |  Unused (16 bits) |              |
-  |--------------------              |
-  | Name/value header block          |
-  +----------------------------------+
++----------------------------------+
+|C|     2           |      8       |
++----------------------------------+
+| Flags (8)  |  Length (24 bits)   |
++----------------------------------+
+|X|          Stream-ID (31bits)    |
++----------------------------------+
+|  Unused (16 bits) |              |
+|--------------------              |
+| Name/value header block          |
++----------------------------------+
 
 */
 type HeadersFrame struct {
@@ -303,9 +309,6 @@ type HeadersFrame struct {
 	Unused   uint16
 
 	Header map[string]string
-}
-
-func NewSessionFrame() {
 }
 
 // HeaderDictionary is the dictionary sent to the zlib compressor/decompressor.
@@ -323,52 +326,3 @@ const HeaderDict = "optionsgetheadpostputdeletetraceacceptaccept-charsetaccept-e
 	"pOctNovDecchunkedtext/htmlimage/pngimage/jpgimage/gifapplication/xmlapplic" +
 	"ation/xhtmltext/plainpublicmax-agecharset=iso-8859-1utf-8gzipdeflateHTTP/1" +
 	".1statusversionurl\x00"
-
-func NewFrameFromHead(headFirst, flagsLength uint32) Frame {
-	var frame Frame
-	if headFirst&0x80000000 == 0 {
-		// date frame
-		frame = &DataFrame{
-			StreamId: headFirst & 0x7fffffff,
-			Flags:    uint8(flagsLength >> 24),
-			Length:   flagsLength & 0x00ffffff,
-		}
-	} else {
-
-		// control frame
-		head := CtrlFrameHead{
-			Version: uint16(headFirst & 0x7fff0000 >> 16),
-			Type:    uint16(headFirst & 0xffff),
-			Flags:   uint8(flagsLength >> 24),
-			Length:  flagsLength & 0xffffff,
-		}
-		switch head.Type {
-		case SYN_STREAM:
-			log.Fatal("unimplemented NewCtrlFrame SYN_STREAM")
-		case SYN_REPLY:
-			frame = &SynReplyFrame{
-				CtrlFrameHead: head,
-			}
-		case RST_STREAM:
-			log.Fatal("%v", "unimplemented NewCtrlFrame RST_STREAM")
-		case SETTINGS:
-			frame = &SettingsFrame{
-				CtrlFrameHead: head,
-			}
-		case NOOP:
-			log.Fatal("%v", "unimplemented NewCtrlFrame NOOP")
-		case PING:
-			log.Fatal("%v", "unimplemented NewCtrlFrame PING")
-		case GOAWAY:
-			frame = &GoawayFrame{
-				CtrlFrameHead: head,
-			}
-		case HEADERS:
-			log.Fatal("%v", "unimplemented NewCtrlFrame HEADERS")
-		default:
-			log.Error("%v", "unreachable code")
-		}
-	}
-
-	return frame
-}
