@@ -8,10 +8,10 @@ import (
 )
 
 func main() {
-//	rawurl := "https://www.google.com"
-//	rawurl := "https://wordpress.com"
-	rawurl := "https://127.0.0.1:2443"
-//	rawurl := "https://isspdyenabled.com/"
+	//	rawurl := "https://www.google.com"
+	//	rawurl := "https://wordpress.com"
+	rawurl := "https://127.0.0.1/index.html"
+	//	rawurl := "https://isspdyenabled.com/"
 	verbose := "vvv"
 
 	level := byte(3 - len(verbose))
@@ -23,7 +23,7 @@ func main() {
 		log.Error("%v", err)
 	}
 
-	req.Header.Set("Cache-Control","nostore")
+	req.Header.Set("Cache-Control", "nostore")
 	req.Header.Set("accept-encoding", "gzip, deflate")
 	req.Header.Set("user-agent", "gate/0.0.1")
 

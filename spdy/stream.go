@@ -38,7 +38,8 @@ func NewStream(streamId uint32) *Stream {
 	return st
 }
 
-func (st *Stream) Syn(output chan Frame, req *http.Request, writer io.Writer, zbuf *bytes.Buffer, zwriter *zlib.Writer) {
+func (st *Stream) Syn(output chan Frame, req *http.Request, writer io.Writer,
+	zbuf *bytes.Buffer, zwriter *zlib.Writer) {
 	st.Request = req
 
 	frame := st.headerToFrame(req)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const Version = 2
+
 const (
 	SYN_STREAM uint16 = iota + 1
 	SYN_REPLY
@@ -80,7 +82,8 @@ func (f *DataFrame) Len() uint32 {
 }
 
 func (h *DataFrame) Head() string {
-	return fmt.Sprintf("DataFrameHead{StreamId=%d, Flags=%d, Length=%d}", h.StreamId, h.Flags, h.Length)
+	return fmt.Sprintf("DataFrameHead{StreamId=%d, Flags=%d, Length=%d}",
+		h.StreamId, h.Flags, h.Length)
 }
 
 /*
@@ -133,12 +136,16 @@ type SynStreamFrame struct {
 
 func NewSynStreamFrame(streamId uint32) *SynStreamFrame {
 	frame := &SynStreamFrame{
-		CtrlFrameHead: CtrlFrameHead{Type: 1},
-		StreamId:      streamId,
-		AssociatedId:  0,
-		Priority:      3,
-		Header:        make(map[string]string),
+		CtrlFrameHead: CtrlFrameHead{
+			Version: Version,
+			Type:    1,
+		},
+		StreamId:     streamId,
+		AssociatedId: 0,
+		Priority:     3,
+		Header:       make(map[string]string),
 	}
+
 	return frame
 }
 

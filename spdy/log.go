@@ -36,10 +36,18 @@ func (log *Logger) SetLevel(level byte) {
 	log.Level = level
 }
 
+func (log *Logger) TraceEnabled() bool {
+	return log.Level <= TRACE
+}
+
 func (log *Logger) Trace(format string, msg ...interface{}) {
 	if log.Level <= TRACE {
 		printLog(format, msg...)
 	}
+}
+
+func (log *Logger) DebugEnabled() bool {
+	return log.Level <= DEBUG
 }
 
 func (log *Logger) Debug(format string, msg ...interface{}) {

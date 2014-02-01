@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 )
 
@@ -17,7 +18,7 @@ type Session struct {
 	input     chan Frame
 	LastInId  uint32
 	LastOutId uint32
-	r         io.Reader
+	r         net.Conn
 	lr        *io.LimitedReader
 	zr        io.ReadCloser
 	w         io.Writer
@@ -27,8 +28,7 @@ type Session struct {
 	Settings  []Setting
 }
 
-func NewSession(writer io.Writer, reader io.Reader, version uint16) *Session {
-
+func NewSession(writer io.Writer, reader net.Conn, version uint16) *Session {
 	se := &Session{
 		Version:   version,
 		output:    make(chan Frame, FRAME_BUFFER_SIZE),
@@ -150,7 +150,7 @@ func (se *Session) readCtrlFrame(headFirst uint32) (Frame, error) {
 	if head.Version == 0 {
 		return nil, errors.New("CtrlFrame Version must not 0")
 	} else if head.Length == 0 {
-		return nil,errors.New("CtrlFrame Length must not 0")
+		return nil, errors.New("CtrlFrame Length must not 0")
 	} else if head.Type == 0 {
 		return nil, errors.New("CtrlFrame Type must not 0")
 	}

@@ -7,7 +7,15 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+
+//	"time"
 )
+
+var sessions map[string]*Session
+
+func init() {
+	sessions = map[string]*Session{}
+}
 
 func Request(req *http.Request) *http.Response {
 	var host = req.Host
@@ -22,6 +30,17 @@ func Request(req *http.Request) *http.Response {
 			log.Error("unkown scheme: %v", req.URL.Scheme)
 			return nil
 		}
+	}
+
+	if se, ok := sessions[host]; ok == true {
+		if log.DebugEnabled() {
+			conn := net.Conn(se.r)
+			log.Debug("Use existed session %v => %v",
+				conn.LocalAddr(), conn.RemoteAddr())
+		}
+		id := se.Request(req)
+		log.Trace("Wait Response with StreamId %d", id)
+		return se.Response(id)
 	}
 
 	var conn net.Conn
@@ -49,6 +68,8 @@ func Request(req *http.Request) *http.Response {
 		res, _ = client.Do(req)
 	case "spdy/2":
 		session := NewSession(conn, conn, 2)
+		sessions[host] = session
+
 		log.Info("New Session %s => %s", conn.LocalAddr(), conn.RemoteAddr())
 
 		session.Serve()
