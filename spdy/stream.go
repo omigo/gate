@@ -1,6 +1,7 @@
 package spdy
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
@@ -25,7 +26,27 @@ func (st *Stream) WaitResponse() *http.Response {
 	log.Info("Stream#%d Reply wait...", st.StreamId)
 	<-st.Fin
 	log.Info("Stream#%d Reply final", st.StreamId)
+	/*
+		if log.TraceEnabled() {
+			traceResponse(st.Response)
+		}
+	*/
 	return st.Response
+}
+
+func traceResponse(res *http.Response) {
+	log.Debug("%v", res.Header)
+	rd := bufio.NewReader(res.Body)
+	for {
+		line, err := rd.ReadString('\n')
+		if err != nil {
+			if err != io.EOF {
+				log.Error("%v", err)
+			}
+			break
+		}
+		log.Debug("%v", line)
+	}
 }
 
 func NewStream(streamId uint32) *Stream {

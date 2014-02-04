@@ -52,6 +52,7 @@ func NewSession(writer io.Writer, reader net.Conn, version uint16) *Session {
 
 func (se *Session) Serve() {
 	go se.send()
+	//	go se.receiveDebug()
 	go se.receive()
 	go se.toResponse()
 }
@@ -84,6 +85,23 @@ func (se *Session) send() {
 		}
 	}
 	log.Info("Session output frame Closed")
+}
+
+func (se *Session) receiveDebug() {
+	for i := 1; i < 100; i++ {
+		var headFirst uint32
+		binary.Read(se.r, binary.BigEndian, &headFirst)
+		var flagsLength uint32
+		binary.Read(se.r, binary.BigEndian, &flagsLength)
+
+		log.Debug("Receive head from Session: %08x %08x", headFirst, flagsLength)
+
+		blen := flagsLength & 0x00ffffff
+		body := make([]byte, blen)
+		se.r.Read(body)
+
+		log.Debug("Receive body from Session: (%d)%x", blen, body)
+	}
 }
 
 func (se *Session) receive() {
@@ -161,7 +179,8 @@ func (se *Session) readCtrlFrame(headFirst uint32) (Frame, error) {
 		reply := &SynReplyFrame{CtrlFrameHead: head}
 
 		reply.Read(se.r)
-		se.wrapReader(reply.Length)
+		// read header
+		se.wrapReader(reply.Length - 6)
 		reply.ReadHeader(se.zr)
 
 		return reply, nil

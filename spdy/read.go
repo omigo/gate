@@ -17,7 +17,7 @@ func (frame *SynReplyFrame) Read(r io.Reader) {
 func (frame *SynReplyFrame) ReadHeader(zr io.Reader) {
 	var number uint16
 	binary.Read(zr, binary.BigEndian, &number)
-	log.Debug("SynReplyFrame header number %d", number)
+	log.Debug("SynReplyFrame(StreamId#%d) header number %d", frame.StreamId, number)
 
 	header := map[string]string{}
 

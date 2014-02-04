@@ -142,7 +142,7 @@ func NewSynStreamFrame(streamId uint32) *SynStreamFrame {
 		},
 		StreamId:     streamId,
 		AssociatedId: 0,
-		Priority:     3,
+		Priority:     0,
 		Header:       make(map[string]string),
 	}
 
