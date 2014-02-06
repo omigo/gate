@@ -3,6 +3,7 @@ package main
 import (
 	"./spdy"
 	"bufio"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -27,34 +28,36 @@ func main() {
 	req.Header.Set("accept-encoding", "gzip, deflate")
 	req.Header.Set("user-agent", "gate/0.0.1")
 
-	times := 2
-	end := make(chan bool, times)
+	times := 1
 	for i := 0; i < times; i++ {
-		go request(req, log, end)
-	}
-
-	for i := 0; i < times; i++ {
-		<-end
+		id, err := spdy.Request(req, handle)
+		if err != nil {
+			log.Error("%v", err)
+		}
+		log.Info("Id#%d is sent", id)
 	}
 }
 
-func request(req *http.Request, log *spdy.Logger, end chan<- bool) {
-	res, err := spdy.Request(req)
+func handle(streamId uint32, res *http.Response, err error) {
 	if err != nil {
-		log.Error("< %v", err)
+		fmt.Println("< %v", err)
 	}
 
-	log.Debug("%v", res.Header)
+	fmt.Println("StreamId#%d: ", streamId)
+
+	for k, vs := range res.Header {
+		fmt.Println("%-32s%s", k, vs)
+	}
+
 	rd := bufio.NewReader(res.Body)
 	for {
 		line, err := rd.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
-				log.Error("%v", err)
+				fmt.Println("%v", err)
 			}
 			break
 		}
-		log.Debug("%v", line)
+		fmt.Println("%v", line)
 	}
-	end <- true
 }

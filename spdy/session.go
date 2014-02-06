@@ -51,13 +51,22 @@ func NewSession(writer io.Writer, reader net.Conn, version uint16) *Session {
 }
 
 func (se *Session) Serve() {
-	go se.send()
+	end := make(chan bool, 1)
+
+	go se.send(end)
 	//	go se.receiveDebug()
-	go se.receive()
-	go se.toResponse()
+	go se.receive(end)
+	go se.toResponse(end)
+
+	log.Info("Session is serving")
+	<- end
 }
 
-func (se *Session) send() {
+func (se *Session) send(end chan bool) {
+	defer func() {
+		end <- true
+	}()
+
 	for frame := range se.output {
 		switch frame.(type) {
 		case *SynStreamFrame:
@@ -87,7 +96,11 @@ func (se *Session) send() {
 	log.Info("Session output frame Closed")
 }
 
-func (se *Session) receiveDebug() {
+func (se *Session) receiveDebug(end chan bool) {
+	defer func() {
+		end <- true
+	}()
+
 	for i := 1; i < 100; i++ {
 		var headFirst uint32
 		binary.Read(se.r, binary.BigEndian, &headFirst)
@@ -104,7 +117,11 @@ func (se *Session) receiveDebug() {
 	}
 }
 
-func (se *Session) receive() {
+func (se *Session) receive(end chan bool) {
+	defer func() {
+		end <- true
+	}()
+
 	for {
 		var headFirst uint32
 		binary.Read(se.r, binary.BigEndian, &headFirst)
@@ -227,7 +244,11 @@ func (se *Session) wrapReader(length uint32) {
 	}
 }
 
-func (se *Session) toResponse() {
+func (se *Session) toResponse(end chan bool) {
+	defer func() {
+		end <- true
+	}()
+
 	for frame := range se.input {
 		switch frame.(type) {
 		case *SynReplyFrame:
@@ -267,22 +288,19 @@ func (se *Session) toResponse() {
 	log.Info("Session output frame Closed")
 }
 
-func (se *Session) Request(req *http.Request) uint32 {
+func (se *Session) Request(req *http.Request, handle Handle) uint32 {
 	log.Debug("Request %s", req.URL.String())
 
 	streamId := se.nextOutId()
-	stream := NewStream(streamId)
-	se.Streams[streamId] = stream
 
-	go stream.Syn(se.output, req, se.w, se.buf, se.zw)
+	go func() {
+		stream := NewStream(streamId)
+		stream.handle = handle
+		se.Streams[streamId] = stream
 
+		stream.Syn(se.output, req, se.w, se.buf, se.zw)
+	}()
 	return streamId
-}
-
-func (se *Session) Response(streamId uint32) *http.Response {
-	defer delete(se.Streams, streamId)
-
-	return se.Streams[streamId].WaitResponse()
 }
 
 func (se *Session) nextOutId() uint32 {

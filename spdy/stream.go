@@ -1,7 +1,6 @@
 package spdy
 
 import (
-	"bufio"
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
@@ -14,46 +13,16 @@ import (
 
 type Stream struct {
 	StreamId uint32
-	InFrames []*DataFrame
-
 	Request  *http.Request
 	Response *http.Response
-
-	Fin chan bool
-}
-
-func (st *Stream) WaitResponse() *http.Response {
-	log.Info("Stream#%d Reply wait...", st.StreamId)
-	<-st.Fin
-	log.Info("Stream#%d Reply final", st.StreamId)
-	/*
-		if log.TraceEnabled() {
-			traceResponse(st.Response)
-		}
-	*/
-	return st.Response
-}
-
-func traceResponse(res *http.Response) {
-	log.Debug("%v", res.Header)
-	rd := bufio.NewReader(res.Body)
-	for {
-		line, err := rd.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				log.Error("%v", err)
-			}
-			break
-		}
-		log.Debug("%v", line)
-	}
+	InFrames []*DataFrame
+	handle   Handle
 }
 
 func NewStream(streamId uint32) *Stream {
 	st := &Stream{
 		StreamId: streamId,
 		InFrames: make([]*DataFrame, 0, 2),
-		Fin:      make(chan bool),
 	}
 
 	return st
@@ -125,13 +94,11 @@ func (st *Stream) ReplyToResponse(srf *SynReplyFrame) {
 
 	log.Debug("Stream#%d SynReplyFrame flag %d", st.StreamId, srf.Flags)
 	if srf.Flags == FLAG_FIN {
-		log.Info("Stream#%d Response is ok, stream end", st.StreamId)
-		st.Fin <- true
+		st.endResponse()
 	}
 }
 
 func (st *Stream) DataToResponse(dat *DataFrame) {
-
 	st.InFrames = append(st.InFrames, dat)
 	log.Debug("Stream#%d InFrames len=%d after append DateFrame", st.StreamId, len(st.InFrames))
 
@@ -162,7 +129,11 @@ func (st *Stream) DataToResponse(dat *DataFrame) {
 		}
 		res.Body = ioutil.NopCloser(mr)
 
-		log.Info("Stream#%d Response is ok, stream end", st.StreamId)
-		st.Fin <- true
+		st.endResponse()
 	}
+}
+
+func (st *Stream) endResponse() {
+	log.Info("Stream#%d Response is ok, stream end", st.StreamId)
+	st.handle(st.StreamId, st.Response, nil)
 }
