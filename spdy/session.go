@@ -8,17 +8,52 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"time"
 )
 
 const FRAME_BUFFER_SIZE = 100
 
-type Session struct {
+type Session interface {
+	Serve()
+	Request(*http.Request, Handle) uint32
+}
+
+type HttpSession struct {
+	client *httputil.ClientConn
+}
+
+func NewHttpSession(conn net.Conn) *HttpSession {
+	hs := &HttpSession{
+		client: httputil.NewClientConn(conn, nil),
+	}
+	return hs
+}
+
+func (hs *HttpSession) Serve() {
+	// do nothing
+}
+
+func (hs *HttpSession) Request(req *http.Request, handle Handle) uint32 {
+	res, err := hs.client.Do(req)
+	if err != nil {
+		log.Error("%v", err)
+		return 0
+	}
+
+	// callback
+	handle(0, res, nil)
+
+	return 0
+}
+
+type SpdySession struct {
 	Version   uint16
 	output    chan Frame
 	input     chan Frame
 	LastInId  uint32
 	LastOutId uint32
-	r         net.Conn
+	r         io.Reader
 	lr        *io.LimitedReader
 	zr        io.ReadCloser
 	w         io.Writer
@@ -28,8 +63,8 @@ type Session struct {
 	Settings  []Setting
 }
 
-func NewSession(writer io.Writer, reader net.Conn, version uint16) *Session {
-	se := &Session{
+func NewSpdySession(writer io.Writer, reader io.Reader, version uint16) Session {
+	se := &SpdySession{
 		Version:   version,
 		output:    make(chan Frame, FRAME_BUFFER_SIZE),
 		input:     make(chan Frame, FRAME_BUFFER_SIZE),
@@ -50,23 +85,16 @@ func NewSession(writer io.Writer, reader net.Conn, version uint16) *Session {
 	return se
 }
 
-func (se *Session) Serve() {
-	end := make(chan bool, 1)
-
-	go se.send(end)
-	//	go se.receiveDebug()
-	go se.receive(end)
-	go se.toResponse(end)
+func (se *SpdySession) Serve() {
+	go se.receive()
+	//go se.receiveDebug()
+	go se.send()
+	go se.toResponse()
 
 	log.Info("Session is serving")
-	<- end
 }
 
-func (se *Session) send(end chan bool) {
-	defer func() {
-		end <- true
-	}()
-
+func (se *SpdySession) send() {
 	for frame := range se.output {
 		switch frame.(type) {
 		case *SynStreamFrame:
@@ -74,7 +102,7 @@ func (se *Session) send(end chan bool) {
 			syn.write(se.w, se.buf, se.zw)
 		case *DataFrame:
 			dat, _ := frame.(*DataFrame)
-			dat.Write(se.w)
+			dat.write(se.w)
 		case *SynReplyFrame:
 			log.Fatal("%v", "unimplemented NewCtrlFrame SynStreamFrame")
 		case *RstStreamFrame:
@@ -96,12 +124,10 @@ func (se *Session) send(end chan bool) {
 	log.Info("Session output frame Closed")
 }
 
-func (se *Session) receiveDebug(end chan bool) {
-	defer func() {
-		end <- true
-	}()
+func (se *SpdySession) receiveDebug() {
+	for i := 1; i < 3; i++ {
+		time.Sleep(3000 * time.Millisecond)
 
-	for i := 1; i < 100; i++ {
 		var headFirst uint32
 		binary.Read(se.r, binary.BigEndian, &headFirst)
 		var flagsLength uint32
@@ -117,11 +143,7 @@ func (se *Session) receiveDebug(end chan bool) {
 	}
 }
 
-func (se *Session) receive(end chan bool) {
-	defer func() {
-		end <- true
-	}()
-
+func (se *SpdySession) receive() {
 	for {
 		var headFirst uint32
 		binary.Read(se.r, binary.BigEndian, &headFirst)
@@ -145,7 +167,7 @@ func (se *Session) receive(end chan bool) {
 	}
 }
 
-func (se *Session) readDataFrame(headFirst uint32) (Frame, error) {
+func (se *SpdySession) readDataFrame(headFirst uint32) (Frame, error) {
 	log.Debug("Read DataFrame with headFirst %08x", headFirst)
 
 	streamId := headFirst & 0x7fffffff
@@ -170,7 +192,7 @@ func (se *Session) readDataFrame(headFirst uint32) (Frame, error) {
 	return f.ReadBody(se.r)
 }
 
-func (se *Session) readCtrlFrame(headFirst uint32) (Frame, error) {
+func (se *SpdySession) readCtrlFrame(headFirst uint32) (Frame, error) {
 	log.Debug("Read CtrlFrame with headFirst %08x", headFirst)
 	var flagsLength uint32
 	binary.Read(se.r, binary.BigEndian, &flagsLength)
@@ -228,7 +250,7 @@ func (se *Session) readCtrlFrame(headFirst uint32) (Frame, error) {
 	return nil, errors.New("unreadable code")
 }
 
-func (se *Session) wrapReader(length uint32) {
+func (se *SpdySession) wrapReader(length uint32) {
 	if se.lr == nil {
 		log.Info("init BufferWrapper length=%d", length)
 		se.lr = &io.LimitedReader{R: se.r, N: int64(length)}
@@ -244,11 +266,7 @@ func (se *Session) wrapReader(length uint32) {
 	}
 }
 
-func (se *Session) toResponse(end chan bool) {
-	defer func() {
-		end <- true
-	}()
-
+func (se *SpdySession) toResponse() {
 	for frame := range se.input {
 		switch frame.(type) {
 		case *SynReplyFrame:
@@ -285,10 +303,9 @@ func (se *Session) toResponse(end chan bool) {
 			log.Error("%v", "unreachable code")
 		}
 	}
-	log.Info("Session output frame Closed")
 }
 
-func (se *Session) Request(req *http.Request, handle Handle) uint32 {
+func (se *SpdySession) Request(req *http.Request, handle Handle) uint32 {
 	log.Debug("Request %s", req.URL.String())
 
 	streamId := se.nextOutId()
@@ -303,7 +320,7 @@ func (se *Session) Request(req *http.Request, handle Handle) uint32 {
 	return streamId
 }
 
-func (se *Session) nextOutId() uint32 {
+func (se *SpdySession) nextOutId() uint32 {
 	if se.LastOutId == 0 {
 		se.LastOutId = 1
 	} else {
@@ -313,6 +330,6 @@ func (se *Session) nextOutId() uint32 {
 	return se.LastOutId
 }
 
-func (se *Session) settings(set *SettingsFrame) {
+func (se *SpdySession) settings(set *SettingsFrame) {
 	se.Settings = set.Settings
 }

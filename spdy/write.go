@@ -7,30 +7,6 @@ import (
 	"io"
 )
 
-func (f *SynStreamFrame) write0(w io.Writer, buf *bytes.Buffer, zw *zlib.Writer) {
-	headFirst := uint32(0x80020001)
-	binary.Write(w, binary.BigEndian, headFirst)
-
-	zheader := writeHeader(f.Header, buf, zw)
-
-	flagsLength := uint32(f.Flags<<24) + uint32(len(zheader)) + 10
-	binary.Write(w, binary.BigEndian, flagsLength)
-
-	binary.Write(w, binary.BigEndian, f.StreamId)
-	binary.Write(w, binary.BigEndian, f.AssociatedId)
-
-	priority := f.Priority << 14
-	binary.Write(w, binary.BigEndian, priority)
-
-	w.Write(zheader)
-
-	if log.TraceEnabled() {
-		log.Trace("zlib header: %x", zheader)
-	}
-
-	log.Debug("Send frame: %v", f)
-}
-
 func (f *SynStreamFrame) write(w io.Writer, buf *bytes.Buffer, zw *zlib.Writer) {
 
 	zheader := writeHeader(f.Header, buf, zw)
@@ -97,6 +73,6 @@ func writeHeader(header map[string]string, buf *bytes.Buffer, zw *zlib.Writer) [
 	return buf.Bytes()
 }
 
-func (f *DataFrame) Write(w io.Writer) {
+func (f *DataFrame) write(w io.Writer) {
 
 }

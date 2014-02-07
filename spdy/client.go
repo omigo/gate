@@ -6,88 +6,111 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"strings"
+	"time"
 )
 
 type Handle func(uint32, *http.Response, error)
 
-var sessions map[string]*Session
+var sessions map[string]Session
 
 func init() {
-	sessions = map[string]*Session{}
+	sessions = map[string]Session{}
 }
 
-func Request(req *http.Request, handle Handle) (uint32, error) {
-	var host = req.Host
-
+func addPort(scheme, host string) string {
 	if i := strings.LastIndex(host, ":"); i == -1 {
-		switch req.URL.Scheme {
+		switch scheme {
 		case "http":
 			host += ":80"
 		case "https":
 			host += ":443"
 		default:
-			log.Error("unkown scheme: %v", req.URL.Scheme)
-			return 0, errors.New("Unreachable code")
+			log.Error("unkown scheme: %v", scheme)
 		}
 	}
 
-	if se, ok := sessions[host]; ok == true {
+	return host
+}
+
+func Request(req *http.Request, handle Handle) (uint32, error) {
+	host := addPort(req.URL.Scheme, req.Host)
+
+	se, err := getSession(req.URL.Scheme, host)
+	if err != nil {
+		log.Error("%v", err)
+		return 0, err
+	}
+
+	id := se.Request(req, handle)
+	log.Trace("Wait Response with StreamId %d", id)
+
+	// TODO 当前函数返回后，session 将释放，可能不返回结果
+	time.Sleep(50 * time.Millisecond)
+
+	return id, nil
+}
+
+func getSession(scheme, host string) (Session, error) {
+	se, ok := sessions[host]
+	if ok == true {
 		if log.DebugEnabled() {
-			conn := net.Conn(se.r)
-			log.Debug("Use existed session %v => %v",
-				conn.LocalAddr(), conn.RemoteAddr())
+			log.Debug("Use existed session")
 		}
-		id := se.Request(req, handle)
-		log.Trace("Wait Response with StreamId %d", id)
+	} else {
+		var err error
+		se, err = initSession(scheme, host)
+		if err != nil {
+			log.Error("%v", err)
+			return nil, err
+		}
+	}
+	return se, nil
+}
 
-		return id, errors.New("Unreachable code")
+func initSession(scheme, host string) (s Session, err error) {
+	conn, proto, err := connect(scheme, host)
+	if err != nil {
+		log.Error("%v", err)
+		return nil, err
 	}
 
-	var conn net.Conn
-	proto := "spdy/2"
-	var err error
-	switch req.URL.Scheme {
+	log.Debug("Connetion %s => %s", conn.LocalAddr(), conn.RemoteAddr())
+
+	switch proto {
+	case "http/1.1", "":
+		s = NewHttpSession(conn)
+	case "spdy/2":
+		s = NewSpdySession(conn, conn, 2)
+	default:
+		log.Fatal("Proto no support")
+		err = errors.New("Unreachable code")
+	}
+
+	sessions[host] = s
+	s.Serve()
+
+	log.Info("Session from %s to %s is Serving", conn.LocalAddr(), conn.RemoteAddr())
+	return s, err
+}
+
+func connect(scheme, host string) (conn net.Conn, proto string, err error) {
+	proto = "spdy/2"
+	switch scheme {
 	case "http":
 		conn, err = DialTCP(host)
 	case "https":
 		conn, proto, err = DialTLS(host)
 	default:
 		log.Error("%v", "unreachable code")
-		return 0, errors.New("Unreachable code")
+		return nil, "", errors.New("Unreachable code")
 	}
 	if err != nil {
 		log.Error("%v", err)
-		return 0, err
+		return nil, "", err
 	}
-	defer conn.Close()
 
-	switch proto {
-	case "http/1.1", "":
-		client := httputil.NewClientConn(conn, nil)
-		res, _ := client.Do(req)
-
-		// callback
-		handle(0, res, nil)
-
-		return 0, nil
-	case "spdy/2":
-		session := NewSession(conn, conn, 2)
-		sessions[host] = session
-
-		log.Info("New Session %s => %s", conn.LocalAddr(), conn.RemoteAddr())
-
-		session.Serve()
-
-		id := session.Request(req, handle)
-		log.Trace("Wait Response with StreamId %d", id)
-
-		return id, nil
-	default:
-		log.Fatal("Proto no support")
-	}
-	return 0, errors.New("Unreachable code")
+	return conn, proto, nil
 }
 
 func DialTCP(host string) (net.Conn, error) {
@@ -100,12 +123,12 @@ func DialTCP(host string) (net.Conn, error) {
 }
 
 func DialTLS(host string) (net.Conn, string, error) {
-	config := tls.Config{
+	config := &tls.Config{
 		NextProtos:         []string{"spdy/2", "http/1.1"},
 		InsecureSkipVerify: true,
 	}
 
-	conn, err := tls.Dial("tcp", host, &config)
+	conn, err := tls.Dial("tcp", host, config)
 	if err != nil {
 		log.Error("%v", err)
 		return nil, "", err

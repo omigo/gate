@@ -11,7 +11,7 @@ import (
 func main() {
 	//	rawurl := "https://www.google.com"
 	//	rawurl := "https://wordpress.com"
-	rawurl := "http://127.0.0.1:2800/"
+	rawurl := "http://10.15.107.172:2800/index.html"
 	//	rawurl := "https://isspdyenabled.com/"
 	verbose := "vvv"
 
@@ -28,7 +28,7 @@ func main() {
 	req.Header.Set("accept-encoding", "gzip, deflate")
 	req.Header.Set("user-agent", "gate/0.0.1")
 
-	times := 1
+	times := 10
 	for i := 0; i < times; i++ {
 		id, err := spdy.Request(req, handle)
 		if err != nil {
@@ -40,24 +40,25 @@ func main() {
 
 func handle(streamId uint32, res *http.Response, err error) {
 	if err != nil {
-		fmt.Println("< %v", err)
+		fmt.Printf("< %v", err)
 	}
 
-	fmt.Println("StreamId#%d: ", streamId)
+	fmt.Printf("StreamId#%d: \n", streamId)
 
 	for k, vs := range res.Header {
-		fmt.Println("%-32s%s", k, vs)
+		fmt.Printf("%-32s%s\n", k+":", vs)
 	}
+	fmt.Println()
 
 	rd := bufio.NewReader(res.Body)
 	for {
 		line, err := rd.ReadString('\n')
 		if err != nil {
 			if err != io.EOF {
-				fmt.Println("%v", err)
+				fmt.Printf("%v", err)
 			}
 			break
 		}
-		fmt.Println("%v", line)
+		fmt.Printf("%v", line)
 	}
 }

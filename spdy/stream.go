@@ -104,33 +104,37 @@ func (st *Stream) DataToResponse(dat *DataFrame) {
 
 	log.Debug("Stream#%d DataFrame flag %d", st.StreamId, dat.Flags)
 	if dat.Flags == FLAG_FIN {
-		var mr io.Reader
-		res := st.Response
-		if res == nil {
-			log.Error("Stream#%d DateFrame must after SynReplyFrame", st.StreamId)
-			return
-		} else if len(res.TransferEncoding) > 0 && res.TransferEncoding[0] == "gzip" {
-			for _, df := range st.InFrames {
-				r, _ := gzip.NewReader(df.Data)
-				if mr == nil {
-					mr = io.MultiReader(r)
-				} else {
-					mr = io.MultiReader(mr, r)
-				}
-			}
-		} else {
-			for _, df := range st.InFrames {
-				if mr == nil {
-					mr = io.MultiReader(df.Data)
-				} else {
-					mr = io.MultiReader(mr, df.Data)
-				}
+		st.endDataFrame()
+	}
+}
+
+func (st *Stream) endDataFrame() {
+	var mr io.Reader
+	res := st.Response
+	if res == nil {
+		log.Error("Stream#%d DateFrame must after SynReplyFrame", st.StreamId)
+		return
+	} else if len(res.TransferEncoding) > 0 && res.TransferEncoding[0] == "gzip" {
+		for _, df := range st.InFrames {
+			r, _ := gzip.NewReader(df.Data)
+			if mr == nil {
+				mr = io.MultiReader(r)
+			} else {
+				mr = io.MultiReader(mr, r)
 			}
 		}
-		res.Body = ioutil.NopCloser(mr)
-
-		st.endResponse()
+	} else {
+		for _, df := range st.InFrames {
+			if mr == nil {
+				mr = io.MultiReader(df.Data)
+			} else {
+				mr = io.MultiReader(mr, df.Data)
+			}
+		}
 	}
+	res.Body = ioutil.NopCloser(mr)
+
+	st.endResponse()
 }
 
 func (st *Stream) endResponse() {
