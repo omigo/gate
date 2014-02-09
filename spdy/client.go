@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type Handle func(uint32, *http.Response, error)
@@ -33,22 +32,19 @@ func addPort(scheme, host string) string {
 	return host
 }
 
-func Request(req *http.Request, handle Handle) (uint32, error) {
+func Request(req *http.Request, handle Handle) (Session, uint32, error) {
 	host := addPort(req.URL.Scheme, req.Host)
 
 	se, err := getSession(req.URL.Scheme, host)
 	if err != nil {
 		log.Error("%v", err)
-		return 0, err
+		return nil, 0, err
 	}
 
 	id := se.Request(req, handle)
 	log.Trace("Wait Response with StreamId %d", id)
 
-	// TODO 当前函数返回后，session 将释放，可能不返回结果
-	time.Sleep(50 * time.Millisecond)
-
-	return id, nil
+	return se, id, nil
 }
 
 func getSession(scheme, host string) (Session, error) {

@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"time"
 )
 
 const FRAME_BUFFER_SIZE = 100
@@ -85,14 +84,39 @@ func NewSpdySession(writer io.Writer, reader io.Reader, version uint16) Session 
 	return se
 }
 
+func (se *SpdySession) Request(req *http.Request, handle Handle) uint32 {
+	log.Debug("Request %s", req.URL.String())
+
+	streamId := se.nextOutId()
+
+	go func() {
+		stream := NewStream(streamId)
+		stream.handle = handle
+		se.Streams[streamId] = stream
+
+		stream.Syn(se.output, req, se.w, se.buf, se.zw)
+	}()
+	return streamId
+}
+
+func (se *SpdySession) nextOutId() uint32 {
+	if se.LastOutId == 0 {
+		se.LastOutId = 1
+	} else {
+		se.LastOutId += 2
+	}
+
+	return se.LastOutId
+}
+
 func (se *SpdySession) Serve() {
 	go se.receive()
-	//go se.receiveDebug()
 	go se.send()
 	go se.toResponse()
 
 	log.Info("Session is serving")
 }
+
 
 func (se *SpdySession) send() {
 	for frame := range se.output {
@@ -122,25 +146,6 @@ func (se *SpdySession) send() {
 		}
 	}
 	log.Info("Session output frame Closed")
-}
-
-func (se *SpdySession) receiveDebug() {
-	for i := 1; i < 3; i++ {
-		time.Sleep(3000 * time.Millisecond)
-
-		var headFirst uint32
-		binary.Read(se.r, binary.BigEndian, &headFirst)
-		var flagsLength uint32
-		binary.Read(se.r, binary.BigEndian, &flagsLength)
-
-		log.Debug("Receive head from Session: %08x %08x", headFirst, flagsLength)
-
-		blen := flagsLength & 0x00ffffff
-		body := make([]byte, blen)
-		se.r.Read(body)
-
-		log.Debug("Receive body from Session: (%d)%x", blen, body)
-	}
 }
 
 func (se *SpdySession) receive() {
@@ -303,31 +308,6 @@ func (se *SpdySession) toResponse() {
 			log.Error("%v", "unreachable code")
 		}
 	}
-}
-
-func (se *SpdySession) Request(req *http.Request, handle Handle) uint32 {
-	log.Debug("Request %s", req.URL.String())
-
-	streamId := se.nextOutId()
-
-	go func() {
-		stream := NewStream(streamId)
-		stream.handle = handle
-		se.Streams[streamId] = stream
-
-		stream.Syn(se.output, req, se.w, se.buf, se.zw)
-	}()
-	return streamId
-}
-
-func (se *SpdySession) nextOutId() uint32 {
-	if se.LastOutId == 0 {
-		se.LastOutId = 1
-	} else {
-		se.LastOutId += 2
-	}
-
-	return se.LastOutId
 }
 
 func (se *SpdySession) settings(set *SettingsFrame) {
