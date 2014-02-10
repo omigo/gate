@@ -23,6 +23,7 @@ const (
 var log *Logger
 
 func init() {
+	golog.SetFlags(golog.Ltime)
 	log = &Logger{
 		Level: INFO,
 	}
@@ -82,16 +83,19 @@ func (log *Logger) Fatal(format string, msg ...interface{}) {
 
 func printLog(format string, msg ...interface{}) {
 	// Determine caller func
-	pc, file, lineno, ok := runtime.Caller(2)
+
+	_, file, lineno, ok := runtime.Caller(2)
 	if ok {
-		funcName := runtime.FuncForPC(pc).Name()
-		last1 := strings.LastIndex(funcName, ".")
-		last2 := strings.LastIndex(funcName[:last1], ".")
-		last2s := strings.LastIndex(funcName[:last1], "/")
-		if last2 < last2s {
-			last2 = last2s
-		}
-		format = fmt.Sprintf("%s(%d) %s - ", file[strings.LastIndex(file, "/")+1:], lineno, funcName[last2+1:]) + format
+		format = fmt.Sprintf("%s(%d) - ", file[strings.LastIndex(file, "/")+1:], lineno) + format
+
+		//		funcName := runtime.FuncForPC(pc).Name()
+		//		last1 := strings.LastIndex(funcName, ".")
+		//		last2 := strings.LastIndex(funcName[:last1], ".")
+		//		last2s := strings.LastIndex(funcName[:last1], "/")
+		//		if last2 < last2s {
+		//			last2 = last2s
+		//		}
+		//		format = fmt.Sprintf("%s(%d) %s - ", file[strings.LastIndex(file, "/")+1:], lineno, funcName[last2+1:]) + format
 	}
 	golog.Printf(format, msg...)
 }

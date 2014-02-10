@@ -83,7 +83,7 @@ func initSession(scheme, host string) (s Session, err error) {
 	case "http/1.1", "":
 		s = NewHttpSession(conn)
 	case "spdy/2":
-		s = NewSpdySession(conn,conn, conn, 2)
+		s = NewSpdySession(conn, conn, conn, 2)
 	default:
 		log.Fatal("Proto no support")
 		err = errors.New("Unreachable code")

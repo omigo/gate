@@ -20,13 +20,13 @@ type Session interface {
 }
 
 type HttpSession struct {
-	conn net.Conn
+	conn   net.Conn
 	client *httputil.ClientConn
 }
 
 func NewHttpSession(conn net.Conn) *HttpSession {
 	hs := &HttpSession{
-		conn: conn,
+		conn:   conn,
 		client: httputil.NewClientConn(conn, nil),
 	}
 	return hs
@@ -55,7 +55,7 @@ func (hs *HttpSession) Request(req *http.Request, handle Handle) uint32 {
 }
 
 type SpdySession struct {
-	conn net.Conn
+	conn      net.Conn
 	Version   uint16
 	output    chan Frame
 	input     chan Frame
@@ -73,7 +73,7 @@ type SpdySession struct {
 
 func NewSpdySession(conn net.Conn, writer io.Writer, reader io.Reader, version uint16) Session {
 	se := &SpdySession{
-		conn: conn,
+		conn:      conn,
 		Version:   version,
 		output:    make(chan Frame, FRAME_BUFFER_SIZE),
 		input:     make(chan Frame, FRAME_BUFFER_SIZE),
@@ -119,7 +119,7 @@ func (se *SpdySession) nextOutId() uint32 {
 	return se.LastOutId
 }
 
-func (ss*SpdySession) Serve() {
+func (ss *SpdySession) Serve() {
 	go ss.receive()
 	go ss.send()
 	go ss.toResponse()
