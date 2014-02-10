@@ -13,8 +13,8 @@ var end chan bool
 func main() {
 	//	rawurl := "https://www.google.com"
 	//	rawurl := "https://wordpress.com"
-	//	rawurl := "http://10.15.107.172:2800/index.html"
-	rawurl := "http://127.0.0.1:2800/index.html"
+		rawurl := "http://10.15.107.172:2800/index.html"
+	//rawurl := "http://127.0.0.1:2800/index.html"
 	//	rawurl := "https://isspdyenabled.com/"
 	verbose := "vvv"
 
@@ -32,20 +32,20 @@ func main() {
 	req.Header.Set("user-agent", "gate/0.0.1")
 
 	times := 100
-	ses := make([]spdy.Session, times)
 	end = make(chan bool, times)
 	for i := 0; i < times; i++ {
-		se, id, err := spdy.Request(req, handle)
+		id, err := spdy.Request(req, handle)
 		if err != nil {
 			log.Error("%v", err)
 		}
 		log.Info("Id#%d is sent", id)
-		ses = append(ses, se)
 	}
 
 	for i := 0; i < times; i++ {
 		<- end
 	}
+
+	spdy.Close()
 }
 
 func handle(streamId uint32, res *http.Response, err error) {

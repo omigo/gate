@@ -32,19 +32,25 @@ func addPort(scheme, host string) string {
 	return host
 }
 
-func Request(req *http.Request, handle Handle) (Session, uint32, error) {
+func Request(req *http.Request, handle Handle) (uint32, error) {
 	host := addPort(req.URL.Scheme, req.Host)
 
 	se, err := getSession(req.URL.Scheme, host)
 	if err != nil {
 		log.Error("%v", err)
-		return nil, 0, err
+		return 0, err
 	}
 
 	id := se.Request(req, handle)
 	log.Trace("Wait Response with StreamId %d", id)
 
-	return se, id, nil
+	return id, nil
+}
+
+func Close() {
+	for _, s := range sessions {
+		s.Close()
+	}
 }
 
 func getSession(scheme, host string) (Session, error) {
@@ -77,7 +83,7 @@ func initSession(scheme, host string) (s Session, err error) {
 	case "http/1.1", "":
 		s = NewHttpSession(conn)
 	case "spdy/2":
-		s = NewSpdySession(conn, conn, 2)
+		s = NewSpdySession(conn,conn, conn, 2)
 	default:
 		log.Fatal("Proto no support")
 		err = errors.New("Unreachable code")
