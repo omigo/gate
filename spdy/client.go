@@ -92,7 +92,7 @@ func initSession(scheme, host string) (s Session, err error) {
 	sessions[host] = s
 	s.Serve()
 
-	log.Info("Session from %s to %s is Serving", conn.LocalAddr(), conn.RemoteAddr())
+	log.Debug("Session from %s to %s is Serving", conn.LocalAddr(), conn.RemoteAddr())
 	return s, err
 }
 
@@ -144,8 +144,8 @@ func DialTLS(host string) (net.Conn, string, error) {
 				log.Error("%v", err)
 				return nil, "", err
 			}
-			log.Info("PublicKey = %x\n", publicKey)
-			log.Info("Subject = %v", v.Subject)
+			log.Debug("PublicKey = %x\n", publicKey)
+			log.Debug("Subject = %v", v.Subject)
 		}
 	}
 

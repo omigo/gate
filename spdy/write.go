@@ -74,5 +74,19 @@ func writeHeader(header map[string]string, buf *bytes.Buffer, zw *zlib.Writer) [
 }
 
 func (f *DataFrame) write(w io.Writer) {
+	blen := f.Length + 8
+	log.Trace("New Buffer with bytes size = %d", blen)
+	bs := make([]byte, blen)
+	b := bytes.NewBuffer(bs)
+	b.Reset()
 
+	binary.Write(b, binary.BigEndian, uint32ToBytes(f.StreamId))
+	flagsLength := (uint32(f.Flags) << 24) + uint32(f.Length)
+	binary.Write(b, binary.BigEndian, uint32ToBytes(flagsLength))
+
+	f.Data.WriteTo(b)
+
+	b.WriteTo(w)
+
+	log.Debug("Send DataFrame: %v", f)
 }

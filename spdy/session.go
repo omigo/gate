@@ -124,7 +124,7 @@ func (ss *SpdySession) Serve() {
 	go ss.send()
 	go ss.toResponse()
 
-	log.Info("Session is serving")
+	log.Debug("Session is serving")
 }
 
 func (ss *SpdySession) Close() {
@@ -159,7 +159,7 @@ func (se *SpdySession) send() {
 			log.Error("%v", "unreachable code")
 		}
 	}
-	log.Info("Session output frame Closed")
+	log.Debug("Session output frame Closed")
 }
 
 func (se *SpdySession) receive() {
@@ -271,7 +271,7 @@ func (se *SpdySession) readCtrlFrame(headFirst uint32) (Frame, error) {
 
 func (se *SpdySession) wrapReader(length uint32) {
 	if se.lr == nil {
-		log.Info("init BufferWrapper length=%d", length)
+		log.Debug("init BufferWrapper length=%d", length)
 		se.lr = &io.LimitedReader{R: se.r, N: int64(length)}
 
 		var err error
@@ -280,7 +280,7 @@ func (se *SpdySession) wrapReader(length uint32) {
 			log.Error("%v", err)
 		}
 	} else {
-		log.Info("Chang LimitedReader length to %d", length)
+		log.Debug("Chang LimitedReader length to %d", length)
 		se.lr.N = int64(length)
 	}
 }

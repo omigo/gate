@@ -3,26 +3,49 @@ package main
 import (
 	"./spdy"
 	"bufio"
+	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 )
 
 var end chan bool
 
 func main() {
-	//	rawurl := "https://www.google.com"
-	//	rawurl := "https://wordpress.com"
-	rawurl := "http://10.15.107.172:2800/index.html"
-	//rawurl := "http://127.0.0.1:2800/index.html"
-	//	rawurl := "https://isspdyenabled.com/"
-	verbose := "vvv"
+	rawurl := flag.String("u", "", "Rawurl")
+	data := flag.String("d", "", "verbose 3")
+	times := flag.Int("t", 1, "verbose 3")
+	verbose1 := flag.Bool("v", false, "verbose 1")
+	verbose2 := flag.Bool("vv", false, "verbose 2")
 
-	level := byte(3 - len(verbose))
+	flag.Parse()
+
+	if *rawurl == "" {
+		fmt.Println("Rawurl must not blank")
+		os.Exit(1)
+	}
+
+	level := byte(3)
+
+	if *verbose2 {
+		level = 1
+	} else if *verbose1 {
+		level = 2
+	}
+
 	log := spdy.GetLogger()
 	log.SetLevel(level)
 
-	req, err := http.NewRequest("GET", rawurl, nil)
+	var req *http.Request
+	var err error
+
+	if *data == "" {
+		req, err = http.NewRequest("GET", *rawurl, nil)
+	} else {
+		req, err = http.NewRequest("POST", *rawurl, bytes.NewBufferString(*data))
+	}
 	if err != nil {
 		log.Error("%v", err)
 	}
@@ -31,17 +54,16 @@ func main() {
 	req.Header.Set("accept-encoding", "gzip, deflate")
 	req.Header.Set("user-agent", "gate/0.0.1")
 
-	times := 2
-	end = make(chan bool, times)
-	for i := 0; i < times; i++ {
+	end = make(chan bool, *times)
+	for i := 0; i < *times; i++ {
 		id, err := spdy.Request(req, handle)
 		if err != nil {
 			log.Error("%v", err)
 		}
-		log.Info("Id#%d is sent", id)
+		log.Debug("Id#%d is sent", id)
 	}
 
-	for i := 0; i < times; i++ {
+	for i := 0; i < *times; i++ {
 		<-end
 	}
 
@@ -60,17 +82,20 @@ func handle(streamId uint32, res *http.Response, err error) {
 	}
 	fmt.Println()
 
-	rd := bufio.NewReader(res.Body)
-	defer res.Body.Close()
-	for {
-		line, err := rd.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				fmt.Printf("%v", err)
+	if res.Body != nil {
+
+		rd := bufio.NewReader(res.Body)
+		defer res.Body.Close()
+		for {
+			line, err := rd.ReadString('\n')
+			if err != nil {
+				if err != io.EOF {
+					fmt.Printf("%v", err)
+				}
+				break
 			}
-			break
+			fmt.Printf("%v", line)
 		}
-		fmt.Printf("%v", line)
 	}
 
 	end <- true

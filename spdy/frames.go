@@ -77,11 +77,23 @@ type DataFrame struct {
 	Data *bytes.Buffer
 }
 
+func NewDataFrame(streamId uint32) *DataFrame {
+	frame := &DataFrame{
+		StreamId: streamId,
+	}
+
+	return frame
+}
 func (f *DataFrame) Len() uint32 {
 	return f.Length
 }
 
 func (h *DataFrame) Head() string {
+	return fmt.Sprintf("DataFrameHead{StreamId=%d, Flags=%d, Length=%d}",
+		h.StreamId, h.Flags, h.Length)
+}
+
+func (h *DataFrame) String() string {
 	return fmt.Sprintf("DataFrameHead{StreamId=%d, Flags=%d, Length=%d}",
 		h.StreamId, h.Flags, h.Length)
 }

@@ -32,16 +32,30 @@ func (st *Stream) Syn(output chan Frame, req *http.Request, writer io.Writer,
 	zbuf *bytes.Buffer, zwriter *zlib.Writer) {
 	st.Request = req
 
-	frame := st.headerToFrame(req)
-	output <- frame
+	syn := st.headerToFrame(req)
+	output <- syn
 
 	if req.Body != nil {
-		// TODO
-		// frame = st.headerToFrame(req.Body)
-		// output <- frame
+		dat := st.bodyToFrame(req.Body)
+		output <- dat
+		dat.Flags = FLAG_FIN
+	} else {
+		syn.Flags = FLAG_FIN
 	}
+}
 
-	frame.Flags = FLAG_FIN
+func (st *Stream) bodyToFrame(body io.ReadCloser) *DataFrame {
+	frame := NewDataFrame(st.StreamId)
+
+	buf := bytes.NewBuffer(make([]byte, 0))
+
+	bs, _ := ioutil.ReadAll(body)
+	buf.Write(bs)
+
+	frame.Length = uint32(buf.Len())
+	frame.Data = buf
+
+	return frame
 }
 
 func (st *Stream) headerToFrame(req *http.Request) *SynStreamFrame {
@@ -57,6 +71,9 @@ func (st *Stream) headerToFrame(req *http.Request) *SynStreamFrame {
 	frame.Header["host"] = req.Host
 
 	url := req.URL.Path
+	if url == "" {
+		url = "/"
+	}
 	if req.URL.RawQuery != "" {
 		url += "?" + req.URL.RawQuery
 	}
@@ -133,11 +150,11 @@ func (st *Stream) endDataFrame() {
 		}
 	}
 	res.Body = ioutil.NopCloser(mr)
-
+	log.Trace("StreamId#%d Response body %v", st.StreamId, st.Response.Body)
 	st.endResponse()
 }
 
 func (st *Stream) endResponse() {
-	log.Info("Stream#%d Response is ok, stream end", st.StreamId)
+	log.Debug("Stream#%d Response is ok, stream end", st.StreamId)
 	st.handle(st.StreamId, st.Response, nil)
 }
