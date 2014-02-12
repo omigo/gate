@@ -89,7 +89,9 @@ func handle(streamId uint32, res *http.Response, err error) {
 		for {
 			line, err := rd.ReadString('\n')
 			if err != nil {
-				if err != io.EOF {
+				if err == io.EOF {
+					fmt.Printf("%v", line)
+				} else {
 					fmt.Printf("%v", err)
 				}
 				break
