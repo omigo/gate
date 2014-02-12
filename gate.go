@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./spdy"
+	"github.com/gavinsh/gate/spdy"
 	"bufio"
 	"bytes"
 	"flag"

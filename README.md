@@ -3,84 +3,114 @@ Gate
 
 Google SPDY Client implementation, written in Go language.
 
+
+## Install
+```bash
+# mkdir ~/gowork
+# cd ~/gowork
+# export GOPATH=`pwd`
+# go get -v github.com/gavinsh/gate
+# go install github.com/gavinsh/gate
+```
+
+## Run
+
+```bash
+# cd ~/gowork
+# bin/gate -xxxxxxxxx
+# bin/gate -h
+Usage of bin/gate:
+  -d="": POST data
+  -q=false: Quiet
+  -t=1: Request times
+  -u="": Raw url
+  -v=false: Verbose
+  -vv=false: verbose detail
+# bin/gate -u https://10.15.107.172
+```
+
+
+惭愧，效率只有 spdycat 的 1/10。。。
+
+
 ==
 
-##般若波罗蜜多心经 
+##般若波罗蜜多心经
 
-                                                    
-bō rě bō luó mì duō xīn jīng 
- 
-般若波罗蜜多心经 
 
-guān zì zài pú sà , xíng shēn bō rě bō luó mì duō shí，zhào jiàn wǔ yùn jiē kōng, dù yī qiē kǔ è。 
+bō rě bō luó mì duō xīn jīng
 
-观自在菩萨，行深般若波罗蜜多时，照见五蕴皆空，度一切苦厄。 
+般若波罗蜜多心经
 
-shè lì zǐ, sè bù yì kōng ，kōng bù yì sè , sè jí shì kōng , kōng jí shì sè。 
+guān zì zài pú sà , xíng shēn bō rě bō luó mì duō shí，zhào jiàn wǔ yùn jiē kōng, dù yī qiē kǔ è。
 
-舍利子，色不异空，空不异色，色即是空，空即是色。 
+观自在菩萨，行深般若波罗蜜多时，照见五蕴皆空，度一切苦厄。
 
-shòu xiǎng xíng shí，yì fù rú shì。 
+shè lì zǐ, sè bù yì kōng ，kōng bù yì sè , sè jí shì kōng , kōng jí shì sè。
 
-受想行识，亦复如是。 
+舍利子，色不异空，空不异色，色即是空，空即是色。
 
-shè lì zǐ, shì zhū fǎ kōng xiāng, 
+shòu xiǎng xíng shí，yì fù rú shì。
 
-舍利子，是诸法空相， 
+受想行识，亦复如是。
 
-bù shēng bù miè, bù gòu bù jìng, bù zēng bù jiǎn , 
+shè lì zǐ, shì zhū fǎ kōng xiāng,
 
-不生不灭，不垢不净，不增不减， 
+舍利子，是诸法空相，
 
-shì gù kōng zhōng wú sè, wú shòu xiǎng xíng shí, 
+bù shēng bù miè, bù gòu bù jìng, bù zēng bù jiǎn ,
 
-是故空中无色，无受想行识， 
+不生不灭，不垢不净，不增不减，
 
-wú yǎn ěr bí shé shēn yì, wú sè shēng xiāng wèi chù fǎ, wú yǎn jiè, 
+shì gù kōng zhōng wú sè, wú shòu xiǎng xíng shí,
 
-无眼耳鼻舌身意，无色声香味触法，无眼界， 
+是故空中无色，无受想行识，
 
-nǎi zhì wú yì shí jiè, wú wú míng , yì wú wú míng jìn, 
+wú yǎn ěr bí shé shēn yì, wú sè shēng xiāng wèi chù fǎ, wú yǎn jiè,
 
-乃至无意识界，无无明，亦无无明尽， 
+无眼耳鼻舌身意，无色声香味触法，无眼界，
 
-nǎi zhì wú lǎo sǐ, yì wú lǎo sǐ jìn。 
+nǎi zhì wú yì shí jiè, wú wú míng , yì wú wú míng jìn,
 
-乃至无老死，亦无老死尽。 
+乃至无意识界，无无明，亦无无明尽，
 
-wú kǔ jí miè dào, wú zhì yì wú dé, yǐ wú suǒ dé gù。 
+nǎi zhì wú lǎo sǐ, yì wú lǎo sǐ jìn。
 
-无苦集灭道，无智亦无得，以无所得故。 
+乃至无老死，亦无老死尽。
 
-pú tí sà duǒ yī bō rě bō luó mì duō gù xīn wú guà ài。 
+wú kǔ jí miè dào, wú zhì yì wú dé, yǐ wú suǒ dé gù。
 
-菩提萨埵，依般若波罗蜜多故，心无挂碍。 
+无苦集灭道，无智亦无得，以无所得故。
 
-wú guà ài gù, wú yǒu kǒng bù, yuǎn lí diān dǎo mèng xiǎng, jiū jìng niè pán。 
+pú tí sà duǒ yī bō rě bō luó mì duō gù xīn wú guà ài。
 
-无挂碍故，无有恐怖，远离颠倒梦想，究竟涅槃。 
+菩提萨埵，依般若波罗蜜多故，心无挂碍。
 
-sān shì zhū fó, yī bō rě bō luó mì duō gù, dé ā nuò duō luó sān miǎo sān pú tí。 
+wú guà ài gù, wú yǒu kǒng bù, yuǎn lí diān dǎo mèng xiǎng, jiū jìng niè pán。
 
-三世诸佛，依般若波罗蜜多故，得阿耨多罗三藐三菩提。 
+无挂碍故，无有恐怖，远离颠倒梦想，究竟涅槃。
 
-gù zhī bō rě bō luó mì duō, shì dà shén zhòu, shì dà míng zhòu, 
+sān shì zhū fó, yī bō rě bō luó mì duō gù, dé ā nuò duō luó sān miǎo sān pú tí。
 
-故知般若波罗蜜多，是大神咒，是大明咒， 
+三世诸佛，依般若波罗蜜多故，得阿耨多罗三藐三菩提。
 
-shì wú shàng zhòu, shì wú děng děng zhòu。néng chú yī qiē kǔ, zhēn shí bù xū。 
+gù zhī bō rě bō luó mì duō, shì dà shén zhòu, shì dà míng zhòu,
 
-是无上咒，是无等等咒。能除一切苦，真实不虚。 
+故知般若波罗蜜多，是大神咒，是大明咒，
 
-gù shuō bō rě bō luó mì duō zhòu。 
+shì wú shàng zhòu, shì wú děng děng zhòu。néng chú yī qiē kǔ, zhēn shí bù xū。
 
-故说般若波罗蜜多咒。 
+是无上咒，是无等等咒。能除一切苦，真实不虚。
 
-jí shuō zhòu yuē： 
+gù shuō bō rě bō luó mì duō zhòu。
 
-即说咒曰： 
+故说般若波罗蜜多咒。
 
-jiē dì jiē dì, bō luó jiē dì, bō luó sēng jiē dì, pú tí sà pó hē。 
+jí shuō zhòu yuē：
+
+即说咒曰：
+
+jiē dì jiē dì, bō luó jiē dì, bō luó sēng jiē dì, pú tí sà pó hē。
 
 揭谛揭谛，波罗揭谛，波罗僧揭谛，菩提萨婆诃。
 
