@@ -6,19 +6,19 @@ Google SPDY Client implementation, written in Go language.
 
 ## Install
 ```bash
-# mkdir ~/gowork
-# cd ~/gowork
-# export GOPATH=`pwd`
-# go get -v github.com/gavinsh/gate
-# go install github.com/gavinsh/gate
+$ mkdir ~/gowork
+$ cd ~/gowork
+$ export GOPATH=`pwd`
+$ go get -v github.com/gavinsh/gate
+$ go install github.com/gavinsh/gate # option
 ```
 
 ## Run
 
 ```bash
-# cd ~/gowork
-# bin/gate -xxxxxxxxx
-# bin/gate -h
+$ cd ~/gowork
+$ bin/gate -xxxxxxxxx
+$ bin/gate -h
 Usage of bin/gate:
   -d="": POST data
   -q=false: Quiet
@@ -26,12 +26,10 @@ Usage of bin/gate:
   -u="": Raw url
   -v=false: Verbose
   -vv=false: verbose detail
-# bin/gate -u https://10.15.107.172
+$ bin/gate -u https://10.15.107.172
 ```
 
-
 惭愧，效率只有 spdycat 的 1/10。。。
-
 
 ==
 
