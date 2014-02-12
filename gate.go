@@ -7,23 +7,29 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 )
 
 var end chan bool
+var quiet bool
 
 func main() {
-	rawurl := flag.String("u", "", "Rawurl")
-	data := flag.String("d", "", "verbose 3")
-	times := flag.Int("t", 1, "verbose 3")
-	verbose1 := flag.Bool("v", false, "verbose 1")
-	verbose2 := flag.Bool("vv", false, "verbose 2")
+	rawurl := flag.String("u", "", "Raw url")
+	data := flag.String("d", "", "POST data")
+	times := flag.Int("t", 1, "Request times")
+	verbose1 := flag.Bool("v", false, "Verbose")
+	verbose2 := flag.Bool("vv", false, "verbose detail")
+	quieta := flag.Bool("q", false, "Quiet")
 
 	flag.Parse()
 
+	quiet = *quieta
+
 	if *rawurl == "" {
-		fmt.Println("Rawurl must not blank")
+		fmt.Println("Raw url must not blank")
 		os.Exit(1)
 	}
 
@@ -55,24 +61,45 @@ func main() {
 	req.Header.Set("user-agent", "gate/0.0.1")
 
 	end = make(chan bool, *times)
-	for i := 0; i < *times; i++ {
+
+	fmt.Printf("Init  %v\n", time.Now())
+	id, err := spdy.Request(req, handle)
+	if err != nil {
+		log.Error("%v", err)
+	}
+	defer spdy.Close()
+	log.Debug("Id#%d is sent", id)
+
+	t1 := time.Now()
+	fmt.Printf("Start %v\n", t1)
+	for i := *times - 1; i > 0; i-- {
 		id, err := spdy.Request(req, handle)
 		if err != nil {
 			log.Error("%v", err)
 		}
 		log.Debug("Id#%d is sent", id)
 	}
-
-	for i := 0; i < *times; i++ {
+	for i := *times; i > 0; i-- {
 		<-end
 	}
 
-	spdy.Close()
+	t2 := time.Now()
+	fmt.Printf("End   %v\n", t2)
+	fmt.Printf("\n\nRequest %d times(exclude init Session) use %.3f s.\n", *times, (float64(t2.Sub(t1))) / 1e9)
 }
 
 func handle(streamId uint32, res *http.Response, err error) {
+	defer func(){
+		end <- true
+	}()
+
 	if err != nil {
 		fmt.Printf("< %v", err)
+	}
+
+	if quiet {
+		io.Copy(ioutil.Discard, res.Body)
+		return
 	}
 
 	fmt.Printf("StreamId#%d: \n", streamId)
@@ -100,5 +127,4 @@ func handle(streamId uint32, res *http.Response, err error) {
 		}
 	}
 
-	end <- true
 }
