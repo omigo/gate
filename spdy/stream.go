@@ -2,7 +2,6 @@ package spdy
 
 import (
 	"bytes"
-	"compress/gzip"
 	"compress/zlib"
 	"io"
 	"io/ioutil"
@@ -17,6 +16,8 @@ type Stream struct {
 	Response *http.Response
 	InFrames []*DataFrame
 	handle   Handle
+	resw     *io.PipeWriter
+	resr     io.Reader
 }
 
 func NewStream(streamId uint32) *Stream {
@@ -107,54 +108,25 @@ func (st *Stream) ReplyToResponse(srf *SynReplyFrame) {
 
 	st.Response.Proto = header["Version"][0]
 
-	st.Response.TransferEncoding = header["Content-Encoding"]
+	transencoding := header["Content-Encoding"]
+	st.Response.TransferEncoding = transencoding
 
 	log.Debug("Stream#%d SynReplyFrame flag %d", st.StreamId, srf.Flags)
-	if srf.Flags == FLAG_FIN {
-		st.endResponse()
+	if srf.Flags != FLAG_FIN {
+		st.resr, st.resw = io.Pipe()
+
+		st.Response.Body = ioutil.NopCloser(st.resr)
 	}
+
+	go st.handle(st.StreamId, st.Response, nil)
 }
 
 func (st *Stream) DataToResponse(dat *DataFrame) {
-	st.InFrames = append(st.InFrames, dat)
-	log.Debug("Stream#%d InFrames len=%d after append DateFrame", st.StreamId, len(st.InFrames))
+	log.Debug("StreamId#%d data to write...", st.StreamId)
+	dat.Data.WriteTo(st.resw)
 
-	log.Debug("Stream#%d DataFrame flag %d", st.StreamId, dat.Flags)
 	if dat.Flags == FLAG_FIN {
-		st.endDataFrame()
+		st.resw.Close()
 	}
 }
 
-func (st *Stream) endDataFrame() {
-	var mr io.Reader
-	res := st.Response
-	if res == nil {
-		log.Error("Stream#%d DateFrame must after SynReplyFrame", st.StreamId)
-		return
-	} else if len(res.TransferEncoding) > 0 && res.TransferEncoding[0] == "gzip" {
-		for _, df := range st.InFrames {
-			r, _ := gzip.NewReader(df.Data)
-			if mr == nil {
-				mr = io.MultiReader(r)
-			} else {
-				mr = io.MultiReader(mr, r)
-			}
-		}
-	} else {
-		for _, df := range st.InFrames {
-			if mr == nil {
-				mr = io.MultiReader(df.Data)
-			} else {
-				mr = io.MultiReader(mr, df.Data)
-			}
-		}
-	}
-	res.Body = ioutil.NopCloser(mr)
-	log.Trace("StreamId#%d Response body %v", st.StreamId, st.Response.Body)
-	st.endResponse()
-}
-
-func (st *Stream) endResponse() {
-	log.Debug("Stream#%d Response is ok, stream end", st.StreamId)
-	st.handle(st.StreamId, st.Response, nil)
-}

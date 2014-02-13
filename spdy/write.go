@@ -13,9 +13,8 @@ func (f *SynStreamFrame) write(w io.Writer, buf *bytes.Buffer, zw *zlib.Writer) 
 
 	blen := len(zheader) + 18
 	log.Trace("New Buffer with bytes size = %d", blen)
-	bs := make([]byte, blen)
+	bs := make([]byte, 0, blen)
 	b := bytes.NewBuffer(bs)
-	b.Reset()
 
 	b.Write([]byte{0x80, 0x02, 0x00, 0x01})
 

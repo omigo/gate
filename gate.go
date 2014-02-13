@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/gavinsh/gate/spdy"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"flag"
 	"fmt"
+	"github.com/gavinsh/gate/spdy"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -56,9 +57,9 @@ func main() {
 		log.Error("%v", err)
 	}
 
-	req.Header.Set("Cache-Control", "nostore")
+	req.Header.Set("accept", "*/*")
 	req.Header.Set("accept-encoding", "gzip, deflate")
-	req.Header.Set("user-agent", "gate/0.0.1")
+	req.Header.Set("user-agent", "gate/0.1.0")
 
 	end = make(chan bool, *times)
 
@@ -84,12 +85,12 @@ func main() {
 	}
 
 	t2 := time.Now()
-	fmt.Printf("End   %v\n", t2)
-	fmt.Printf("\n\nRequest %d times(exclude init Session) use %.3f s.\n", *times, (float64(t2.Sub(t1))) / 1e9)
+	fmt.Printf("\n\nEnd   %v\n", t2)
+	fmt.Printf("\nRequest %d times(exclude init Session) use %.3f s.\n", *times, (float64(t2.Sub(t1)))/1e9)
 }
 
 func handle(streamId uint32, res *http.Response, err error) {
-	defer func(){
+	defer func() {
 		end <- true
 	}()
 
@@ -110,11 +111,14 @@ func handle(streamId uint32, res *http.Response, err error) {
 	fmt.Println()
 
 	if res.Body != nil {
-
-		rd := bufio.NewReader(res.Body)
+		if len(res.Header["Content-Encoding"]) > 0 &&
+			res.Header["Content-Encoding"][0] == "gzip" {
+			res.Body, _ = gzip.NewReader(res.Body) // err
+		}
+		r := bufio.NewReader(res.Body)
 		defer res.Body.Close()
 		for {
-			line, err := rd.ReadString('\n')
+			line, err := r.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
 					fmt.Printf("%v", line)

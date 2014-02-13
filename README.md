@@ -10,7 +10,7 @@ $ mkdir ~/gowork
 $ cd ~/gowork
 $ export GOPATH=`pwd`
 $ go get -v github.com/gavinsh/gate
-$ go install github.com/gavinsh/gate # option
+$ go install github.com/gavinsh/gate # optional
 ```
 
 ## Run

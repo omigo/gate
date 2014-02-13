@@ -120,9 +120,9 @@ func (se *SpdySession) nextOutId() uint32 {
 }
 
 func (ss *SpdySession) Serve() {
-	go ss.receive()
+	go ss.recv()
 	go ss.send()
-	go ss.toResponse()
+	go ss.proc()
 
 	log.Debug("Session is serving")
 }
@@ -162,7 +162,7 @@ func (se *SpdySession) send() {
 	log.Debug("Session output frame Closed")
 }
 
-func (se *SpdySession) receive() {
+func (se *SpdySession) recv() {
 	for {
 		var headFirst uint32
 		binary.Read(se.r, binary.BigEndian, &headFirst)
@@ -183,6 +183,8 @@ func (se *SpdySession) receive() {
 
 		log.Debug("Frame to input queue")
 		se.input <- frame
+
+		log.Trace("Session input frames length=%d", len(se.input))
 	}
 }
 
@@ -285,7 +287,7 @@ func (se *SpdySession) wrapReader(length uint32) {
 	}
 }
 
-func (se *SpdySession) toResponse() {
+func (se *SpdySession) proc() {
 	for frame := range se.input {
 		switch frame.(type) {
 		case *SynReplyFrame:
