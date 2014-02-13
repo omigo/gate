@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"time"
 )
@@ -22,7 +23,7 @@ func main() {
 	data := flag.String("d", "", "POST data")
 	times := flag.Int("t", 1, "Request times")
 	verbose1 := flag.Bool("v", false, "Verbose")
-	verbose2 := flag.Bool("vv", false, "verbose detail")
+	verbose2 := flag.Bool("vv", false, "Verbose detail")
 	quieta := flag.Bool("q", false, "Quiet")
 
 	flag.Parse()
@@ -57,9 +58,12 @@ func main() {
 		log.Error("%v", err)
 	}
 
-	req.Header.Set("accept", "*/*")
-	req.Header.Set("accept-encoding", "gzip, deflate")
 	req.Header.Set("user-agent", "gate/0.1.0")
+
+	if quiet {
+		dump, _ := httputil.DumpRequest(req, false)
+		fmt.Println(string(dump))
+	}
 
 	end = make(chan bool, *times)
 
@@ -86,49 +90,48 @@ func main() {
 
 	t2 := time.Now()
 	fmt.Printf("\n\nEnd   %v\n", t2)
-	fmt.Printf("\nRequest %d times(exclude init Session) use %.3f s.\n", *times, (float64(t2.Sub(t1)))/1e9)
+	fmt.Printf("\nRequest %d times(exclude init Session) use %.3fs.\n", *times, (float64(t2.Sub(t1)))/1e9)
 }
 
 func handle(streamId uint32, res *http.Response, err error) {
-	defer func() {
-		end <- true
-	}()
+	go func(){
+		defer func() {
+			end <- true
+		}()
 
-	if err != nil {
-		fmt.Printf("< %v", err)
-	}
+		if err != nil {
+			fmt.Printf("< %v", err)
+		}
 
-	if quiet {
-		io.Copy(ioutil.Discard, res.Body)
-		return
-	}
+		if quiet {
+			io.Copy(ioutil.Discard, res.Body)
+			return
+		}
 
-	fmt.Printf("StreamId#%d: \n", streamId)
+		fmt.Printf("\nStreamId#%d: \n", streamId)
 
-	for k, vs := range res.Header {
-		fmt.Printf("%-32s%s\n", k+":", vs)
-	}
-	fmt.Println()
+		dump, _ := httputil.DumpResponse(res, false)
+		fmt.Println(string(dump))
 
-	if res.Body != nil {
-		if len(res.Header["Content-Encoding"]) > 0 &&
+		if res.Body != nil {
+			if len(res.Header["Content-Encoding"]) > 0 &&
 			res.Header["Content-Encoding"][0] == "gzip" {
-			res.Body, _ = gzip.NewReader(res.Body) // err
-		}
-		r := bufio.NewReader(res.Body)
-		defer res.Body.Close()
-		for {
-			line, err := r.ReadString('\n')
-			if err != nil {
-				if err == io.EOF {
-					fmt.Printf("%v", line)
-				} else {
-					fmt.Printf("%v", err)
-				}
-				break
+				res.Body, _ = gzip.NewReader(res.Body) // err
 			}
-			fmt.Printf("%v", line)
+			r := bufio.NewReader(res.Body)
+			defer res.Body.Close()
+			for {
+				line, err := r.ReadString('\n')
+				if err != nil {
+					if err == io.EOF {
+						fmt.Printf("%5d: %v", streamId, line)
+					} else {
+						fmt.Printf("%v", err)
+					}
+					break
+				}
+				fmt.Printf("%5d: %v", streamId, line)
+			}
 		}
-	}
-
+	}()
 }

@@ -18,7 +18,7 @@ func (f *SynStreamFrame) write(w io.Writer, buf *bytes.Buffer, zw *zlib.Writer) 
 
 	b.Write([]byte{0x80, 0x02, 0x00, 0x01})
 
-	flagsLength := uint32(f.Flags<<24) + uint32(len(zheader)) + 10
+	flagsLength := (uint32(f.Flags)<<24) + uint32(len(zheader)) + 10
 	b.Write(uint32ToBytes(flagsLength))
 	b.Write(uint32ToBytes(f.StreamId))
 	b.Write(uint32ToBytes(f.AssociatedId))

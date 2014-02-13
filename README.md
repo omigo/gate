@@ -10,14 +10,12 @@ $ mkdir ~/gowork
 $ cd ~/gowork
 $ export GOPATH=`pwd`
 $ go get -v github.com/gavinsh/gate
-$ go install github.com/gavinsh/gate # optional
 ```
 
 ## Run
 
 ```bash
 $ cd ~/gowork
-$ bin/gate -xxxxxxxxx
 $ bin/gate -h
 Usage of bin/gate:
   -d="": POST data
@@ -25,9 +23,16 @@ Usage of bin/gate:
   -t=1: Request times
   -u="": Raw url
   -v=false: Verbose
-  -vv=false: verbose detail
+  -vv=false: Verbose detail
 $ bin/gate -u https://10.15.107.172
 ```
+
+## TODO
+- 支持添加 http header
+- 效率不高
+- 日志格式不清晰
+- 设计不好，应当细分流水线作业
+- RstFrame 等未实现
 
 惭愧，效率只有 spdycat 的 1/10。。。
 

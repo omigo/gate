@@ -2,7 +2,7 @@ package spdy
 
 import (
 	"bytes"
-	"compress/zlib"
+//	"compress/zlib"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -30,18 +30,21 @@ func NewStream(streamId uint32) *Stream {
 }
 
 func (st *Stream) Syn(output chan Frame, req *http.Request, writer io.Writer,
-	zbuf *bytes.Buffer, zwriter *zlib.Writer) {
+		      zbuf *bytes.Buffer, zwriter io.Writer) {
 	st.Request = req
 
 	syn := st.headerToFrame(req)
-	output <- syn
 
 	if req.Body != nil {
+		log.Trace("Stream#%d Request with body", st.StreamId)
+		output <- syn
 		dat := st.bodyToFrame(req.Body)
-		output <- dat
 		dat.Flags = FLAG_FIN
+		output <- dat
 	} else {
+		log.Trace("Stream#%d Request without body", st.StreamId)
 		syn.Flags = FLAG_FIN
+		output <- syn
 	}
 }
 
@@ -118,7 +121,7 @@ func (st *Stream) ReplyToResponse(srf *SynReplyFrame) {
 		st.Response.Body = ioutil.NopCloser(st.resr)
 	}
 
-	go st.handle(st.StreamId, st.Response, nil)
+	st.handle(st.StreamId, st.Response, nil)
 }
 
 func (st *Stream) DataToResponse(dat *DataFrame) {
